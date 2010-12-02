@@ -1,0 +1,4 @@
+*.m		diff=objc
+*.mm		diff=objc
+*.doc		diff=word
+*.pdf		diff=pdf
