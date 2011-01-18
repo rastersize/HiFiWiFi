@@ -1,15 +1,15 @@
 //
-//  WiFiHiFiAppDelegate.m
-//  WiFiHiFi
+//  HiFiWiFiAppDelegate.m
+//  HiFiWiFi
 //
 //  Created by Aron Cedercrantz on 02/12/10.
-//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//  Copyright 2010 Fruit Is Good. All rights reserved.
 //
 
-#import "WiFiHiFiAppDelegate.h"
-#import "WiFiHiFiViewController.h"
+#import "HiFiWiFiAppDelegate.h"
+#import "HiFiWiFiViewController.h"
 
-@implementation WiFiHiFiAppDelegate
+@implementation HiFiWiFiAppDelegate
 
 @synthesize window;
 @synthesize viewController;

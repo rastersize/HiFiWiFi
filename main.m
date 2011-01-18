@@ -1,9 +1,9 @@
 //
 //  main.m
-//  WiFiHiFi
+//  HiFiWiFi
 //
 //  Created by Aron Cedercrantz on 02/12/10.
-//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//  Copyright 2010 Fruit Is Good. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>

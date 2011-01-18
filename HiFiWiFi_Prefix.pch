@@ -1,5 +1,5 @@
 //
-// Prefix header for all source files of the 'WiFiHiFi' target in the 'WiFiHiFi' project
+// Prefix header for all source files of the 'HiFiWiFi' target in the 'HiFiWiFi' project
 //
 
 #ifdef __OBJC__

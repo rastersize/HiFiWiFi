@@ -1,14 +1,14 @@
 //
-//  WiFiHiFiViewController.m
-//  WiFiHiFi
+//  HiFiWiFiViewController.m
+//  HiFiWiFi
 //
 //  Created by Aron Cedercrantz on 02/12/10.
-//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//  Copyright 2010 Fruit Is Good. All rights reserved.
 //
 
-#import "WiFiHiFiViewController.h"
+#import "HiFiWiFiViewController.h"
 
-@implementation WiFiHiFiViewController
+@implementation HiFiWiFiViewController
 
 
 
@@ -38,13 +38,11 @@
 */
 
 
-/*
-// Override to allow orientations other than the default portrait orientation.
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+-(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+	return (interfaceOrientation == UIInterfaceOrientationPortrait ||
+			interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown);
 }
-*/
 
 - (void)didReceiveMemoryWarning {
 	// Releases the view if it doesn't have a superview.
