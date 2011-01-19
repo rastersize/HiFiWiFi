@@ -1,6 +1,9 @@
 # TODO List #
 
  * Rank todo-list
+ * Take care of special cases
+   * App "backgrounded" and looking for high five friend
+   * ...
  * Add multiple outcomes of high five
    * perfect hit
    * good hit
