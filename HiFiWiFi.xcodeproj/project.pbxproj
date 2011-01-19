@@ -246,6 +246,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = HiFiWiFi_Prefix.pch;
 				INFOPLIST_FILE = "HiFiWiFi-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 4.1;
 				PRODUCT_NAME = HiFiWiFi;
 			};
 			name = Debug;
@@ -258,6 +259,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = HiFiWiFi_Prefix.pch;
 				INFOPLIST_FILE = "HiFiWiFi-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 4.1;
 				PRODUCT_NAME = HiFiWiFi;
 				VALIDATE_PRODUCT = YES;
 			};
