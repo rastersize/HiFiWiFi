@@ -30,6 +30,7 @@
 	<array>
 		<string>peer-peer</string>
 		<string>gamekit</string>
+		<string>accelerometer</string>
 	</array>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleBlackOpaque</string>
