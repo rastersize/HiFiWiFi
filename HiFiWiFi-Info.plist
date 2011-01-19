@@ -26,5 +26,10 @@
 	<true/>
 	<key>NSMainNibFile</key>
 	<string>MainWindow</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>peer-peer</string>
+		<string>gamekit</string>
+	</array>
 </dict>
 </plist>
