@@ -22,10 +22,12 @@
 
 	MBProgressHUD			*_lookingForFriendsHUD;
 	
-	UIAccelerationValue		accelZ;
+	UIAccelerationValue		_accelZ;
 	
 	BOOL					_isLookingForFriend;
 	GKSession				*_peerSession;
+	
+	BOOL					_gameCenterAvailable;
 }
 
 @property (nonatomic, retain) IBOutlet UIView *startView;

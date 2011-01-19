@@ -8,6 +8,7 @@
 
 #import "HiFiWiFiViewController.h"
 #import "MBProgressHUD.h"
+#import "GameCenterHelpers.h"
 
 #import <GameKit/GameKit.h>
 
@@ -55,6 +56,11 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 - (void)disconnectPeerSession;
 - (void)peerSessionFailed:(id)sender;
 
+- (void)_authenticateWithGameCenter;
+- (void)_registerForAuthenticationNotification;
+- (void)_authenticationChanged;
+- (BOOL)_useGameCenter;
+
 @end
 
 
@@ -63,6 +69,7 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 #pragma mark HiFiWiFiViewController implementation
 @implementation HiFiWiFiViewController
 
+#pragma mark -
 #pragma mark Properties
 @synthesize startView		= _startView;
 @synthesize noFriendView	= _noFriendView;
@@ -71,12 +78,13 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 @synthesize infoView		= _infoView;
 
 
-
+#pragma mark -
 #pragma mark Init
 - (void)awakeFromNib
 {
 	_activeView = nil;
 	_isLookingForFriend = NO;
+	_gameCenterAvailable = NO;
 	
 	_peerSession = [[GKSession alloc] initWithSessionID:kFGAppGKSessionID
 											displayName:nil // nil == device name
@@ -91,6 +99,7 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 	[_peerSession setAvailable:YES];
 	[_peerSession setAvailable:NO];
 }
+
 
 #pragma mark Cleanup
 - (void)dealloc
@@ -117,13 +126,8 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
     [super dealloc];
 }
 
-- (void)viewDidUnload
-{
-	// Release any retained subviews of the main view.
-	// e.g. self.myOutlet = nil;
-}
 
-
+#pragma mark -
 #pragma mark View management
 -(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
@@ -131,12 +135,16 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 			interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown);
 }
 
-// Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
 - (void)viewDidLoad
 {
     [super viewDidLoad];
 	
 	[self changeToView:[self startView] animate:NO];
+
+	if (isGameCenterAvailable()) {
+		_gameCenterAvailable = YES;
+		[self _authenticateWithGameCenter];
+	}
 	
 	[self configureAccelerometer];
 }
@@ -181,12 +189,6 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 	}
 }
 
-- (void)hideLookingForFriendsHUD
-{
-	DLog(@"");
-	[_lookingForFriendsHUD hide:NO];
-}
-
 - (void)showStartViewAnimated
 {
 	[self changeToView:[self startView] animate:YES];
@@ -201,6 +203,19 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 	[self performSelector:@selector(showStartViewAnimated)
 			   withObject:nil
 			   afterDelay:kFGReturnToStartDelay];
+}
+
+- (void)hideLookingForFriendsHUD
+{
+	DLog(@"");
+	[_lookingForFriendsHUD hide:NO];
+}
+
+
+#pragma mark MBProgressHUDDelegate method
+- (void)hudWasHidden:(MBProgressHUD *)hud
+{
+	_lookingForFriendsHUD = nil;
 }
 
 
@@ -218,7 +233,8 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 }
 
 
-#pragma mark Device connectioning
+#pragma mark -
+#pragma mark Session management
 // TODO: Rename to connectPeerSession or something like that
 - (void)establishConnectionWithOtherDevice
 {
@@ -249,6 +265,7 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 }
 
 
+#pragma mark -
 #pragma mark Acceleration management
 - (void)configureAccelerometer
 {
@@ -289,12 +306,12 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 {
 	if (!_isLookingForFriend) {
 		// Apply a high-pass filter so we can discard "slow" movements.
-		accelZ = [acceleration z] -
+		_accelZ = [acceleration z] -
 				 (([acceleration z] * kFGFilteringFactor) +
-				  (accelZ * (1.0 - kFGFilteringFactor)));
+				  (_accelZ * (1.0 - kFGFilteringFactor)));
 	
-		if (fabs(accelZ) > kFGAccelerationZTrigger) {
-			DLog(@"High Five occured with acceleration Y = %f", fabs(accelZ));
+		if (fabs(_accelZ) > kFGAccelerationZTrigger) {
+			DLog(@"High Five occured with acceleration Y = %f", fabs(_accelZ));
 			
 			[self suspendAccelerometer];
 			
@@ -310,10 +327,38 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 }
 
 
-#pragma mark MBProgressHUDDelegate method
-- (void)hudWasHidden:(MBProgressHUD *)hud
+#pragma mark -
+#pragma mark Game Center
+- (void)_authenticateWithGameCenter
 {
-	_lookingForFriendsHUD = nil;
+	[[GKLocalPlayer localPlayer] authenticateWithCompletionHandler:^(NSError *error){
+		if (error != nil) {
+			// TODO: Present error message
+		}
+	}];
+}
+
+- (void)_registerForAuthenticationNotification
+{
+	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+	[nc addObserver: self
+		   selector:@selector(_authenticationChanged)
+			   name:GKPlayerAuthenticationDidChangeNotificationName
+			 object:nil];
+}
+
+- (void)_authenticationChanged
+{
+	if ([GKLocalPlayer localPlayer].isAuthenticated) {
+		// Insert code here to handle a successful authentication.
+	} else {
+		// Insert code here to clean up any outstanding Game Center-related classes.
+	}
+}
+
+- (BOOL)_useGameCenter
+{
+	return (_gameCenterAvailable && [[GKLocalPlayer localPlayer] isAuthenticated]);
 }
 
 
