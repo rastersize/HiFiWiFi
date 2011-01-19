@@ -17,6 +17,7 @@
 		28D7ACF80DDB3853001CB0EB /* HiFiWiFiViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 28D7ACF70DDB3853001CB0EB /* HiFiWiFiViewController.m */; };
 		9CD7EF9112E6400F00B5EF9C /* MBProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = 9CD7EF9012E6400F00B5EF9C /* MBProgressHUD.m */; };
 		9CD7F07112E65D8500B5EF9C /* CDCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = 9CD7F07012E65D8500B5EF9C /* CDCommon.m */; };
+		9CD7F09512E667DC00B5EF9C /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 9CD7F09412E667DC00B5EF9C /* Default@2x.png */; };
 		9CF4CEBC12E623E1001F8A31 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = 9CF4CEBB12E623E1001F8A31 /* Default.png */; };
 		9CF4CEEA12E62BAD001F8A31 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 9CF4CED312E62B08001F8A31 /* Icon.png */; };
 /* End PBXBuildFile section */
@@ -39,6 +40,7 @@
 		9CD7EF9012E6400F00B5EF9C /* MBProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MBProgressHUD.m; sourceTree = "<group>"; };
 		9CD7F06F12E65D8500B5EF9C /* CDCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CDCommon.h; sourceTree = "<group>"; };
 		9CD7F07012E65D8500B5EF9C /* CDCommon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CDCommon.m; sourceTree = "<group>"; };
+		9CD7F09412E667DC00B5EF9C /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x.png"; sourceTree = SOURCE_ROOT; };
 		9CF4CEBB12E623E1001F8A31 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Default.png; path = ../Default.png; sourceTree = "<group>"; };
 		9CF4CED312E62B08001F8A31 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -126,6 +128,7 @@
 			children = (
 				9CF4CED312E62B08001F8A31 /* Icon.png */,
 				9CF4CEBB12E623E1001F8A31 /* Default.png */,
+				9CD7F09412E667DC00B5EF9C /* Default@2x.png */,
 			);
 			path = Graphics;
 			sourceTree = "<group>";
@@ -211,6 +214,7 @@
 				2899E5220DE3E06400AC0155 /* HiFiWiFiViewController.xib in Resources */,
 				9CF4CEBC12E623E1001F8A31 /* Default.png in Resources */,
 				9CF4CEEA12E62BAD001F8A31 /* Icon.png in Resources */,
+				9CD7F09512E667DC00B5EF9C /* Default@2x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
