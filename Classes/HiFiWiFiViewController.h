@@ -13,6 +13,8 @@
 
 
 @interface HiFiWiFiViewController : UIViewController <MBProgressHUDDelegate, UIAccelerometerDelegate> {
+	UIView					*_activeView;
+	
 	UIView					*_startView;
 	UIView					*_noFriendView;
 	UIView					*_highFiveView;

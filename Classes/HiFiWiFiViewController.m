@@ -12,8 +12,10 @@
 
 #pragma mark Constants
 #define kFGAccelerometerFrequency			60.0 // Hz
-#define kFGFilteringFactor					0.5
+#define kFGFilteringFactor					0.6
 #define kFGAccelerationZTrigger				0.6
+
+#define kFGFlipAnimationTime				1.0
 
 
 #pragma mark -
@@ -21,7 +23,8 @@
 #pragma mark HiFiWiFiViewController private API
 @interface HiFiWiFiViewController ()
 
-- (void)changeToView:(UIView *)aView;
+- (void)changeToView:(UIView *)aView animate:(BOOL)animate;
+- (void)flipToView:(UIView *)aView;
 
 - (void)configureAccelerometer;
 - (void)suspendAccelerometer;
@@ -52,6 +55,7 @@
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
+		_activeView = nil;
         isLookingForFriend = NO;
     }
     return self;
@@ -61,6 +65,8 @@
 #pragma mark Cleanup
 - (void)dealloc
 {
+	_activeView = nil;
+	
 	[_startView release];
 	[_noFriendView release];
 	[_highFiveView release];
@@ -97,12 +103,35 @@
 {
     [super viewDidLoad];
 	
+	[self changeToView:[self startView] animate:NO];
 	[self configureAccelerometer];
 }
 
-- (void)changeToView:(UIView *)aView
+- (void)changeToView:(UIView *)aView animate:(BOOL)animate
 {
-	[self setView:aView];
+	if (aView != _activeView) {
+		DLog(@"to");
+		[_activeView removeFromSuperview];
+		_activeView = aView;
+		[[self view] addSubview:aView];
+	}
+}
+
+- (void)flipToView:(UIView *)aView leftToRight:(BOOL)leftToRight
+{
+	if (aView != _activeView) {
+		[UIView transitionWithView:[self view]
+						  duration:kFGFlipAnimationTime
+						   options:(leftToRight
+									? UIViewAnimationOptionTransitionFlipFromLeft
+									: UIViewAnimationOptionTransitionFlipFromRight)
+						animations:^{
+							[_activeView removeFromSuperview];
+							_activeView = aView;
+							[[self view] addSubview:aView];
+						}
+						completion:NULL];
+	}
 }
 
 
@@ -110,20 +139,20 @@
 - (IBAction)showInfoView:(id)sender
 {
 	[self suspendAccelerometer];
-	[self changeToView:[self infoView]];
+	[self flipToView:[self infoView] leftToRight:YES];
 }
 
 - (IBAction)hideInfoView:(id)sender
 {
 	[self resumeAccelerometer];
-	[self changeToView:[self startView]];
+	[self flipToView:[self startView] leftToRight:NO];
 }
 
 
 #pragma mark Device connectioning
 - (void)establishConnectionWithOtherDevice
 {
-	sleep(5);
+	sleep(3);
 }
 
 
