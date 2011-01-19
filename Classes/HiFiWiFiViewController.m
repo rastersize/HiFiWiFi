@@ -195,7 +195,6 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 - (void)showNoFriendView
 {
 	[self changeToView:[self noFriendView] animate:NO];
-	[self initHighFiveDelayTimer];
 	[NSObject cancelPreviousPerformRequestsWithTarget:self
 											 selector:@selector(showStartViewAnimated)
 											   object:nil];
