@@ -180,6 +180,7 @@
 		didAccelerate:(UIAcceleration *)acceleration
 {
 	if (!isLookingForFriend) {
+		// Apply a high-pass filter so we can discard "slow" movements.
 		accelZ = [acceleration z] -
 				 (([acceleration z] * kFGFilteringFactor) +
 				  (accelZ * (1.0 - kFGFilteringFactor)));
