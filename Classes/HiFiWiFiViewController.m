@@ -196,6 +196,9 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 {
 	[self changeToView:[self noFriendView] animate:NO];
 	[self initHighFiveDelayTimer];
+	[NSObject cancelPreviousPerformRequestsWithTarget:self
+											 selector:@selector(showStartViewAnimated)
+											   object:nil];
 	[self performSelector:@selector(showStartViewAnimated)
 			   withObject:nil
 			   afterDelay:kFGReturnToStartDelay];
@@ -267,8 +270,11 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 
 - (void)initHighFiveDelayTimer
 {
+	[NSObject cancelPreviousPerformRequestsWithTarget:self
+											 selector:@selector(highFiveDelayTimerDone:)
+											   object:nil];
 	[self performSelector:@selector(highFiveDelayTimerDone:)
-			   withObject:self
+			   withObject:nil
 			   afterDelay:kFGHighFiveDelay];
 }
 
