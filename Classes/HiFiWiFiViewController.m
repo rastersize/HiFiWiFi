@@ -9,6 +9,8 @@
 #import "HiFiWiFiViewController.h"
 #import "MBProgressHUD.h"
 
+#import <GameKit/GameKit.h>
+
 
 #pragma mark Constants
 #define kFGAccelerometerFrequency			60.0 // Hz
@@ -17,6 +19,8 @@
 
 #define kFGFlipAnimationTime				1.0
 
+#define kFGTimeoutInterval					5.0 // seconds
+
 
 #pragma mark -
 #pragma mark 
@@ -24,13 +28,16 @@
 @interface HiFiWiFiViewController ()
 
 - (void)changeToView:(UIView *)aView animate:(BOOL)animate;
-- (void)flipToView:(UIView *)aView;
+- (void)flipToView:(UIView *)aView leftToRight:(BOOL)leftToRight;
 
 - (void)configureAccelerometer;
 - (void)suspendAccelerometer;
 - (void)resumeAccelerometer;
 
 - (void)establishConnectionWithOtherDevice;
+- (void)disconnectPeerSession;
+- (void)peerSessionTimedOut:(NSTimer *)theTimer;
+- (void)cleanupTimeoutTimer;
 
 @end
 
@@ -56,7 +63,12 @@
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
 		_activeView = nil;
-        isLookingForFriend = NO;
+        _isLookingForFriend = NO;
+		
+		_peerSession = [[GKSession alloc] initWithSessionID:nil // nil == app bundle id
+												displayName:nil // nil == device name
+												sessionMode:GKSessionModePeer];
+		[_peerSession setDelegate:self];
     }
     return self;
 }
@@ -65,6 +77,17 @@
 #pragma mark Cleanup
 - (void)dealloc
 {
+	[_timeoutTimer invalidate];
+	_timeoutTimer = nil;
+	
+	[[UIAccelerometer sharedAccelerometer] setDelegate:nil];
+	
+	[_peerSession setDelegate:nil];
+	[_peerSession release];
+	
+	[_lookingForFriendsHUD setDelegate:nil];
+	[_lookingForFriendsHUD release];
+	
 	_activeView = nil;
 	
 	[_startView release];
@@ -104,6 +127,11 @@
     [super viewDidLoad];
 	
 	[self changeToView:[self startView] animate:NO];
+	
+	_lookingForFriendsHUD = [[MBProgressHUD alloc] initWithView:[self view]];
+	[_lookingForFriendsHUD setLabelText:NSLocalizedString(@"High fiveing", @"Looking for friends HUD label")];
+	[_lookingForFriendsHUD setDelegate:self];
+	
 	[self configureAccelerometer];
 }
 
@@ -152,7 +180,35 @@
 #pragma mark Device connectioning
 - (void)establishConnectionWithOtherDevice
 {
-	sleep(3);
+	if (!_isLookingForFriend) {
+		_timeoutTimer = [NSTimer scheduledTimerWithTimeInterval:kFGTimeoutInterval
+														 target:self
+													   selector:@selector(peerSessionTimedOut:)
+													   userInfo:nil
+														repeats:NO];
+		[_peerSession setAvailable:YES];
+	}
+
+	while (_isLookingForFriend) { }
+}
+
+- (void)disconnectPeerSession
+{
+	[_peerSession disconnectFromAllPeers];
+	[_peerSession setAvailable:NO];
+}
+
+- (void)peerSessionTimedOut:(NSTimer *)theTimer
+{
+	[self disconnectPeerSession];
+	[self cleanupTimeoutTimer];
+	_isLookingForFriend = NO;
+}
+
+- (void)cleanupTimeoutTimer
+{
+	[_timeoutTimer invalidate];
+	_timeoutTimer = nil;
 }
 
 
@@ -179,7 +235,7 @@
 - (void)accelerometer:(UIAccelerometer *)accelerometer
 		didAccelerate:(UIAcceleration *)acceleration
 {
-	if (!isLookingForFriend) {
+	if (!_isLookingForFriend) {
 		// Apply a high-pass filter so we can discard "slow" movements.
 		accelZ = [acceleration z] -
 				 (([acceleration z] * kFGFilteringFactor) +
@@ -189,17 +245,14 @@
 			DLog(@"%f", fabs(accelZ));
 			
 			[self suspendAccelerometer];
-			isLookingForFriend = YES;
+			_isLookingForFriend = YES;
 			
-			// TODO: Toogle launching if high five stuff...
-			MBProgressHUD *lookingForFriendsHUD = [[MBProgressHUD alloc] initWithView:[self view]];
-			[lookingForFriendsHUD setLabelText:NSLocalizedString(@"High fiveing", @"Looking for friends HUD label")];
-			[[self view] addSubview:lookingForFriendsHUD];
-			[lookingForFriendsHUD setDelegate:self];
-			[lookingForFriendsHUD showWhileExecuting:@selector(establishConnectionWithOtherDevice)
-											onTarget:self
-										  withObject:nil
-											animated:YES];
+			
+			[[self view] addSubview:_lookingForFriendsHUD];
+			[_lookingForFriendsHUD showWhileExecuting:@selector(establishConnectionWithOtherDevice)
+											 onTarget:self
+										   withObject:nil
+											 animated:YES];
 		}
 	}
 }
@@ -212,8 +265,41 @@
 	// Temp, this should be done either after a short delay when no friends
 	// found or after all the high five animations, sound and stuff are done +
 	// a short delay.
-	isLookingForFriend = NO;
-	[self resumeAccelerometer];
+}
+
+
+#pragma mark GKSessionDelegate methods
+- (void)session:(GKSession *)session connectionWithPeerFailed:(NSString *)peerID withError:(NSError *)error
+{
+	[self cleanupTimeoutTimer];
+	DLog(@"session: %@, peerID: %@, error: %@", session, peerID, error);
+	// TODO: Present error message
+}
+
+- (void)session:(GKSession *)session didFailWithError:(NSError *)error
+{
+	[self cleanupTimeoutTimer];
+	DLog(@"session: %@, error: %@", session, error);
+	// TODO: Present error message
+}
+
+- (void)session:(GKSession *)session didReceiveConnectionRequestFromPeer:(NSString *)peerID
+{
+	[self cleanupTimeoutTimer];
+	
+	DLog(@"session: %@, peerID: %@", session, peerID);
+
+	if (![session acceptConnectionFromPeer:peerID error:NULL]) {
+		// TODO: Present error message
+	}
+}
+
+- (void)session:(GKSession *)session peer:(NSString *)peerID didChangeState:(GKPeerConnectionState)state
+{
+	[self cleanupTimeoutTimer];
+	DLog(@"session: %@, peerID: %@, state: %@", session, peerID, state);
+	
+	// TODO: Show high five view, disconnect session and initiate the delay timer
 }
 
 @end

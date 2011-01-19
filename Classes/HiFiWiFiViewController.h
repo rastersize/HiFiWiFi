@@ -7,6 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <GameKit/GameKit.h>
 #import "MBProgressHUD.h"
 
 // TODO: Add multiple outcomes (perfect hit, good hit, lousy hit, miss) of high five
@@ -15,7 +16,7 @@
 // TODO: Add geo-tagging with map
 
 
-@interface HiFiWiFiViewController : UIViewController <MBProgressHUDDelegate, UIAccelerometerDelegate> {
+@interface HiFiWiFiViewController : UIViewController <MBProgressHUDDelegate, UIAccelerometerDelegate, GKSessionDelegate> {
 	UIView					*_activeView;
 	
 	UIView					*_startView;
@@ -24,9 +25,15 @@
 
 	UIView					*_infoView;
 
+	MBProgressHUD			*_lookingForFriendsHUD;
+	
 	UIAccelerationValue		accelZ;
 	
-	BOOL					isLookingForFriend;
+	BOOL					_isLookingForFriend;
+	GKSession				*_peerSession;
+	NSTimer					*_timeoutTimer;
+	
+	NSTimer					*_highFiveDelayTimer;
 }
 
 @property (nonatomic, retain) IBOutlet UIView *startView;
