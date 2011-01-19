@@ -31,5 +31,7 @@
 		<string>peer-peer</string>
 		<string>gamekit</string>
 	</array>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleBlackOpaque</string>
 </dict>
 </plist>
