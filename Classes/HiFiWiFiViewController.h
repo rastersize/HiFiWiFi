@@ -26,9 +26,6 @@
 	
 	BOOL					_isLookingForFriend;
 	GKSession				*_peerSession;
-	NSTimer					*_timeoutTimer;
-	
-	NSTimer					*_highFiveDelayTimer;
 }
 
 @property (nonatomic, retain) IBOutlet UIView *startView;

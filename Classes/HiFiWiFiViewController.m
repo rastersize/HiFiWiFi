@@ -17,27 +17,43 @@
 #define kFGFilteringFactor					0.6
 #define kFGAccelerationZTrigger				0.6
 
-#define kFGFlipAnimationTime				1.0
+#define kFGFlipAnimationTime				1.0  // seconds
+#define kFGChangeViewAnimationTime			200.0  // seconds
 
-#define kFGTimeoutInterval					5.0 // seconds
+#define kFGTimeoutInterval					5.0  // seconds
+#define kFGHighFiveDelay					2.0  // seconds
+#define kFGReturnToStartDelay				40.0 // seconds
+
+NSString *const kFGAppGKSessionID			= @"com.fruitisgood.HiFiWiFi";
+
+NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailabilityChangedNotification";
+
 
 
 #pragma mark -
 #pragma mark 
 #pragma mark HiFiWiFiViewController private API
+// TODO: Change signature to start with an underscore (_) since they are private
 @interface HiFiWiFiViewController ()
 
 - (void)changeToView:(UIView *)aView animate:(BOOL)animate;
 - (void)flipToView:(UIView *)aView leftToRight:(BOOL)leftToRight;
 
+- (void)showStartViewAnimated;
+- (void)showNoFriendView;
+
+- (void)hideLookingForFriendsHUD;
+
 - (void)configureAccelerometer;
 - (void)suspendAccelerometer;
 - (void)resumeAccelerometer;
 
+- (void)initHighFiveDelayTimer;
+- (void)highFiveDelayTimerDone:(id)sender;
+
 - (void)establishConnectionWithOtherDevice;
 - (void)disconnectPeerSession;
-- (void)peerSessionTimedOut:(NSTimer *)theTimer;
-- (void)cleanupTimeoutTimer;
+- (void)peerSessionFailed:(id)sender;
 
 @end
 
@@ -57,36 +73,38 @@
 
 
 #pragma mark Init
-// The designated initializer. Override to perform setup that is required before the view is loaded.
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+- (void)awakeFromNib
 {
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self) {
-		_activeView = nil;
-        _isLookingForFriend = NO;
-		
-		_peerSession = [[GKSession alloc] initWithSessionID:nil // nil == app bundle id
-												displayName:nil // nil == device name
-												sessionMode:GKSessionModePeer];
-		[_peerSession setDelegate:self];
-    }
-    return self;
+	_activeView = nil;
+	_isLookingForFriend = NO;
+	
+	_peerSession = [[GKSession alloc] initWithSessionID:kFGAppGKSessionID
+											displayName:nil // nil == device name
+											sessionMode:GKSessionModePeer];
+	[_peerSession setDisconnectTimeout:kFGTimeoutInterval];
+	[_peerSession setDelegate:self];
+	// No why the h*ll would we do this? Well, there happens to be a bug in iOS
+	// 4.0.1 and up which seem to cause the Bluethooth stuff to not init properly
+	// on first activation. Thus we let it init properly here and then turns it
+	// off imediately. Not pretty but it "works".
+	// TODO: Remove when bug in iOS is fixed
+	[_peerSession setAvailable:YES];
+	[_peerSession setAvailable:NO];
 }
-
 
 #pragma mark Cleanup
 - (void)dealloc
-{
-	[_timeoutTimer invalidate];
-	_timeoutTimer = nil;
-	
+{	
 	[[UIAccelerometer sharedAccelerometer] setDelegate:nil];
 	
+	[_peerSession setAvailable:NO];
 	[_peerSession setDelegate:nil];
 	[_peerSession release];
 	
 	[_lookingForFriendsHUD setDelegate:nil];
 	[_lookingForFriendsHUD release];
+	
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	
 	_activeView = nil;
 	
@@ -97,14 +115,6 @@
 	[_infoView release];
 	
     [super dealloc];
-}
-
-- (void)didReceiveMemoryWarning
-{
-	// Releases the view if it doesn't have a superview.
-    [super didReceiveMemoryWarning];
-	
-	// Release any cached data, images, etc that aren't in use.
 }
 
 - (void)viewDidUnload
@@ -128,20 +138,29 @@
 	
 	[self changeToView:[self startView] animate:NO];
 	
-	_lookingForFriendsHUD = [[MBProgressHUD alloc] initWithView:[self view]];
-	[_lookingForFriendsHUD setLabelText:NSLocalizedString(@"High fiveing", @"Looking for friends HUD label")];
-	[_lookingForFriendsHUD setDelegate:self];
-	
 	[self configureAccelerometer];
 }
 
 - (void)changeToView:(UIView *)aView animate:(BOOL)animate
 {
 	if (aView != _activeView) {
-		DLog(@"to");
-		[_activeView removeFromSuperview];
-		_activeView = aView;
-		[[self view] addSubview:aView];
+		if (animate) {
+			[UIView transitionWithView:[self view]
+							  duration:kFGChangeViewAnimationTime
+							   options:UIViewAnimationOptionCurveEaseInOut
+							animations:^{
+								[_activeView removeFromSuperview];
+								_activeView = aView;
+								[[self view] addSubview:aView];
+							}
+							completion:^(BOOL comp){
+								DLog(@"animation completed = %d", comp);
+							}];
+		} else {
+			[_activeView removeFromSuperview];
+			_activeView = aView;
+			[[self view] addSubview:aView];
+		}
 	}
 }
 
@@ -162,8 +181,28 @@
 	}
 }
 
+- (void)hideLookingForFriendsHUD
+{
+	DLog(@"");
+	[_lookingForFriendsHUD hide:NO];
+}
 
-#pragma mark Info view actions
+- (void)showStartViewAnimated
+{
+	[self changeToView:[self startView] animate:YES];
+}
+
+- (void)showNoFriendView
+{
+	[self changeToView:[self noFriendView] animate:NO];
+	[self initHighFiveDelayTimer];
+	[self performSelector:@selector(showStartViewAnimated)
+			   withObject:nil
+			   afterDelay:kFGReturnToStartDelay];
+}
+
+
+#pragma mark UI actions
 - (IBAction)showInfoView:(id)sender
 {
 	[self suspendAccelerometer];
@@ -178,18 +217,16 @@
 
 
 #pragma mark Device connectioning
+// TODO: Rename to connectPeerSession or something like that
 - (void)establishConnectionWithOtherDevice
 {
 	if (!_isLookingForFriend) {
-		_timeoutTimer = [NSTimer scheduledTimerWithTimeInterval:kFGTimeoutInterval
-														 target:self
-													   selector:@selector(peerSessionTimedOut:)
-													   userInfo:nil
-														repeats:NO];
+		_isLookingForFriend = YES;
 		[_peerSession setAvailable:YES];
+		[self performSelector:@selector(peerSessionFailed:)
+				   withObject:self
+				   afterDelay:kFGTimeoutInterval];
 	}
-
-	while (_isLookingForFriend) { }
 }
 
 - (void)disconnectPeerSession
@@ -198,17 +235,15 @@
 	[_peerSession setAvailable:NO];
 }
 
-- (void)peerSessionTimedOut:(NSTimer *)theTimer
+- (void)peerSessionFailed:(id)sender
 {
+	DLog(@"peer session timed out");
+	
+	[self hideLookingForFriendsHUD];
 	[self disconnectPeerSession];
-	[self cleanupTimeoutTimer];
+	[self showNoFriendView];
+	[self initHighFiveDelayTimer];
 	_isLookingForFriend = NO;
-}
-
-- (void)cleanupTimeoutTimer
-{
-	[_timeoutTimer invalidate];
-	_timeoutTimer = nil;
 }
 
 
@@ -230,6 +265,18 @@
 	[[UIAccelerometer sharedAccelerometer] setDelegate:self];
 }
 
+- (void)initHighFiveDelayTimer
+{
+	[self performSelector:@selector(highFiveDelayTimerDone:)
+			   withObject:self
+			   afterDelay:kFGHighFiveDelay];
+}
+
+- (void)highFiveDelayTimerDone:(id)sender
+{
+	DLog(@"");
+	[self resumeAccelerometer];
+}
 
 #pragma mark UIAccelerometerDelegate method 
 - (void)accelerometer:(UIAccelerometer *)accelerometer
@@ -242,17 +289,17 @@
 				  (accelZ * (1.0 - kFGFilteringFactor)));
 	
 		if (fabs(accelZ) > kFGAccelerationZTrigger) {
-			DLog(@"%f", fabs(accelZ));
+			DLog(@"High Five occured with acceleration Y = %f", fabs(accelZ));
 			
 			[self suspendAccelerometer];
-			_isLookingForFriend = YES;
 			
-			
+			_lookingForFriendsHUD = [[MBProgressHUD alloc] initWithView:[self view]];
+			[_lookingForFriendsHUD setLabelText:NSLocalizedString(@"High fiveing", @"Looking for friends HUD label")];
+			[_lookingForFriendsHUD setDelegate:self];
+			[_lookingForFriendsHUD setRemoveFromSuperViewOnHide:YES];
 			[[self view] addSubview:_lookingForFriendsHUD];
-			[_lookingForFriendsHUD showWhileExecuting:@selector(establishConnectionWithOtherDevice)
-											 onTarget:self
-										   withObject:nil
-											 animated:YES];
+			[_lookingForFriendsHUD show:YES];
+			[self establishConnectionWithOtherDevice];
 		}
 	}
 }
@@ -261,46 +308,48 @@
 #pragma mark MBProgressHUDDelegate method
 - (void)hudWasHidden:(MBProgressHUD *)hud
 {
-	// TODO: IF no friend found show noFriendsView ELSE show highFiveView
-	// Temp, this should be done either after a short delay when no friends
-	// found or after all the high five animations, sound and stuff are done +
-	// a short delay.
+	_lookingForFriendsHUD = nil;
 }
 
 
 #pragma mark GKSessionDelegate methods
 - (void)session:(GKSession *)session connectionWithPeerFailed:(NSString *)peerID withError:(NSError *)error
 {
-	[self cleanupTimeoutTimer];
 	DLog(@"session: %@, peerID: %@, error: %@", session, peerID, error);
-	// TODO: Present error message
+	
+	// TODO: Present user with error message?
+	[self peerSessionFailed:self];
 }
 
 - (void)session:(GKSession *)session didFailWithError:(NSError *)error
 {
-	[self cleanupTimeoutTimer];
-	DLog(@"session: %@, error: %@", session, error);
-	// TODO: Present error message
+	ALog(@"session: %@, error: %@", session, error);
+	
+	// TODO: Present user with error message?
+	[self peerSessionFailed:self];
 }
 
 - (void)session:(GKSession *)session didReceiveConnectionRequestFromPeer:(NSString *)peerID
 {
-	[self cleanupTimeoutTimer];
-	
 	DLog(@"session: %@, peerID: %@", session, peerID);
 
 	if (![session acceptConnectionFromPeer:peerID error:NULL]) {
-		// TODO: Present error message
+		DLog(@"failed to accept session: %@, peerID: %@", session, peerID);
+		[self peerSessionFailed:self];
+	} else {
+		[self hideLookingForFriendsHUD];
+		[self disconnectPeerSession];
+		[self changeToView:[self highFiveView] animate:NO];
+		[self initHighFiveDelayTimer];
+		_isLookingForFriend = NO;
 	}
 }
 
 - (void)session:(GKSession *)session peer:(NSString *)peerID didChangeState:(GKPeerConnectionState)state
 {
-	[self cleanupTimeoutTimer];
 	DLog(@"session: %@, peerID: %@, state: %@", session, peerID, state);
-	
-	// TODO: Show high five view, disconnect session and initiate the delay timer
 }
+
 
 @end
 #pragma mark -
