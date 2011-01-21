@@ -16,6 +16,7 @@
    * highest speed high five
    * highest altitude high five
    * lowest altitude high five
+   * amount of people you have high fived
    * moar!?
  * Add GameCenter achivements
    * high altitude high five
