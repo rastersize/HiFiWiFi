@@ -300,6 +300,7 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 	[self resumeAccelerometer];
 }
 
+
 #pragma mark UIAccelerometerDelegate method 
 - (void)accelerometer:(UIAccelerometer *)accelerometer
 		didAccelerate:(UIAcceleration *)acceleration
@@ -349,7 +350,7 @@ NSString *const kFGBluetoothAvailabilityChangedNotification = @"BluetoothAvailab
 
 - (void)_authenticationChanged
 {
-	if ([GKLocalPlayer localPlayer].isAuthenticated) {
+	if ([[GKLocalPlayer localPlayer] isAuthenticated]) {
 		// Insert code here to handle a successful authentication.
 	} else {
 		// Insert code here to clean up any outstanding Game Center-related classes.
